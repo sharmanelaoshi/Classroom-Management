@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom English Vocabulary Motion Duel</title>
+    <!-- Include MediaPipe and Camera Utils dependencies -->
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #11998e, #38ef7d); /* Fresh garden theme */
+            color: white;
+            text-align: center;
+            overflow-x: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .game-zone {
+            display: flex;
+            width: 90vw;
+            justify-content: space-around;
+            margin-top: 20px;
+            position: relative;
+        }
+        .player-side {
+            width: 45%;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .score-board { font-size: 2rem; font-weight: bold; margin: 10px 0; }
+        .action-alert { font-size: 1.5rem; font-weight: bold; color: #fff176; min-height: 40px; }
+        
+        .question-card {
+            background: rgba(255, 255, 255, 0.9);
+            color: #222;
+            padding: 25px 40px;
+            border-radius: 12px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 20px 0;
+            max-width: 800px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .options-container {
+            display: flex;
+            justify-content: space-between;
+            width: 70%;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        .option-box {
+            background: #8B5A2B;
+            border: 3px solid #5C3A21;
+            padding: 15px 25px;
+            border-radius: 10px;
+            width: 45%;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        #videoContainer {
+            position: relative;
+            width: 320px;
+            height: 240px;
+            border-radius: 10px;
+            border: 3px solid #fff;
+            overflow: hidden;
+            margin-top: 10px;
+            background: #000;
+        }
+        video {
+            transform: scaleX(-1); /* Mirror camera for natural movement */
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .center-line {
+            position: absolute;
+            left: 50%; top: 0; bottom: 0;
+            width: 2px;
+            background: red;
+            z-index: 10;
+        }
+        #startBtn {
+            padding: 15px 30px;
+            font-size: 1.3rem;
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🌱 Vocabulary Motion Duel 🌱</h1>
+        <p>Instructions: Set the camera to capture 2 players side-by-side. Raise your hand high on the left or right to select the correct vocabulary word!</p>
+        
+        <button id="startBtn" onclick="initGame()">Start Camera & Load Game</button>
+
+        <div id="videoContainer">
+            <div class="center-line"></div>
+            <video id="webcam" autoplay playsinline></video>
+        </div>
+
+        <div class="question-card" id="questionBox">Click the orange button above to start!</div>
+        
+        <div class="options-container">
+            <div class="option-box" id="optLeft">⬅️ Option A</div>
+            <div class="option-box" id="optRight">Option B ➡️</div>
+        </div>
+
+        <!-- 2 Player Matrix -->
+        <div class="game-zone">
+            <div class="player-side" id="p1Side">
+                <h2>Player 1 (Left Side)</h2>
+                <div class="score-board">Score: <span id="p1Score">0</span></div>
+                <div class="action-alert" id="p1Status">Waiting...</div>
+            </div>
+            <div class="player-side" id="p2Side">
+                <h2>Player 2 (Right Side)</h2>
+                <div class="score-board">Score: <span id="p2Score">0</span></div>
+                <div class="action-alert" id="p2Status">Waiting...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('webcam');
+        let p1Score = 0, p2Score = 0;
+        let currentAnswer = '';
+        let canAnswer = false;
+        let p1Answered = false, p2Answered = false;
+
+        // English Vocabulary Dataset Loop (Definitions & Answers)
+        const pool = [
+            {q: "What word means: 'To run or move quickly with short steps'?", a: "Scamper", b: "Linger", ans: "A"},
+            {q: "What word means: 'Very large, huge, or powerful'?", a: "Tiny", b: "Enormous", ans: "B"},
+            {q: "What word means: 'To look closely or safely at something difficult to see'?", a: "Peer", b: "Ignore", ans: "A"},
+            {q: "What word means: 'Full of joy, happiness, or good spirits'?", a: "Gloomy", b: "Cheerful", ans: "B"},
+            {q: "What word means: 'To make something look beautiful by adding decorations'?", a: "Adorn", b: "Damage", ans: "A"}
+        ];
+
+        function nextQuestion() {
+            const rand = pool[Math.floor(Math.random() * pool.length)];
+            document.getElementById('questionBox').innerText = rand.q;
+            document.getElementById('optLeft').innerText = `⬅️ A: ${rand.a}`;
+            document.getElementById('optRight').innerText = `B: ${rand.b} ➡️`;
+            currentAnswer = rand.ans;
+            
+            p1Answered = false; p2Answered = false;
+            document.getElementById('p1Status').innerText = "Analyzing hands...";
+            document.getElementById('p2Status').innerText = "Analyzing hands...";
+            canAnswer = true;
+        }
+
+        // Handle physical movement signals matching vector landmarks
+        function evaluateInputs(handX, handY) {
+            if (!canAnswer) return;
+
+            // Screen split logic: Left half = Player 1, Right half = Player 2
+            if (handX < 0.5) { 
+                if (handY < 0.4 && !p1Answered) { // Hand raised threshold
+                    p1Answered = true;
+                    let choice = (handX < 0.25) ? 'A' : 'B';
+                    processResult(1, choice);
+                }
+            } else {
+                if (handY < 0.4 && !p2Answered) {
+                    p2Answered = true;
+                    let choice = (handX < 0.75) ? 'A' : 'B';
+                    processResult(2, choice);
+                }
+            }
+        }
+
+        function processResult(player, choice) {
+            const statusId = player === 1 ? 'p1Status' : 'p2Status';
+            const scoreId = player === 1 ? 'p1Score' : 'p2Score';
+            
+            if (choice === currentAnswer) {
+                document.getElementById(statusId).innerText = `✅ Correct! (+10 pts)`;
+                if (player === 1) p1Score += 10; else p2Score += 10;
+                document.getElementById(scoreId).innerText = player === 1 ? p1Score : p2Score;
+                
+                canAnswer = false;
+                setTimeout(nextQuestion, 2500); // 2.5 second window before next question
+            } else {
+                document.getElementById(statusId).innerText = `❌ Wrong! Try again!`;
+            }
+        }
+
+        // Initialize MediaPipe AI tracking models
+        function initGame() {
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('questionBox').innerText = "Loading AI Hand-Tracking Framework...";
+
+            const hands = new Hands({
+                locateFile: (file) => https://jsdelivr.net{file}
+            });
+
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+
+            hands.onResults((results) => {
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    for (const landmarks of results.multiHandLandmarks) {
+                        const palmPoint = landmarks[9]; // Middle knuckle landmark data mapping
+                        evaluateInputs(palmPoint.x, palmPoint.y);
+                    }
+                }
+            });
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                },
+                width: 320,
+                height: 240
+            });
+            
+            camera.start().then(() => {
+                nextQuestion();
+            });
+        }
+    </script>
+</body>
+</html>
